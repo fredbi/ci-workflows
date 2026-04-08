@@ -1,60 +1,10 @@
 name: Contributors
 
-permissions:
-  contents: read
-
 on:
   workflow_call:
-    inputs:
-      enable-commit-signing:
-        description: |
-          Enable GPG commit signing by a bot user.
 
-          When enabled, commits in the pull request will be signed with the bot's GPG key.
-        required: false
-        type: string
-        default: "true"
-    secrets:
-      github-app-id:
-        description: |
-          GitHub App ID for bot user authentication.
-
-          Default for go-openapi: CI_BOT_APP_ID
-
-          Required to create pull requests as the bot user.
-        required: false
-      github-app-private-key:
-        description: |
-          GitHub App private key in PEM format.
-
-          Default for go-openapi: CI_BOT_APP_PRIVATE_KEY
-
-          Required to create pull requests as the bot user.
-        required: false
-      gpg-private-key:
-        description: |
-          GPG private key in armored format for signing commits.
-
-          Default for go-openapi: CI_BOT_GPG_PRIVATE_KEY
-
-          Required when enable-commit-signing is true.
-        required: false
-      gpg-passphrase:
-        description: |
-          Passphrase to unlock the GPG private key.
-
-          Default for go-openapi: CI_BOT_GPG_PASSPHRASE
-
-          Required when enable-commit-signing is true.
-        required: false
-      gpg-fingerprint:
-        description: |
-          Fingerprint of the GPG signing key (spaces removed).
-
-          Default for go-openapi: CI_BOT_SIGNING_KEY
-
-          Required when enable-commit-signing is true.
-        required: false
+permissions:
+  contents: read
 
 jobs:
   update-contributors:
@@ -63,155 +13,33 @@ jobs:
       pull-requests: write
       contents: write
     runs-on: ubuntu-latest
-    outputs:
-      pull-request-url: ${{ steps.create-pull-request.outputs.pull-request-url }}
-      pull-request-operation: ${{ steps.create-pull-request.outputs.pull-request-operation }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Identify all-time contributors to this repository
-        uses: github/contributors@8452e4ec5e6014b34bccfa63b486e72e8b660f4b # v2.0.7
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPOSITORY: ${{ github.repository }}
-          LINK_TO_PROFILE: "True"
-          OUTPUT_FILENAME: "CONTRIBUTORS.md"
-      - name: Relint contributor file
-        # This wraps naked markdown links by the more correct "<...>" form.
-        run: |
-          rm -rf contributors.json
-          sed -i -E 's/([[:space:]]+)(https:\/\/[^ ]+)/\1<\2>/' CONTRIBUTORS.md
-      - name: Propagate to other contributors documentation
-        if: ${{ hashFiles('docs/**/CONTRIBUTORS.md') != '' }}
-        run: |
-          # extract the body of updated contributors from ./CONTRIBUTORS.md
-          body=$(awk '
-            BEGIN { found = 0; skip_blank = 0 }
-            !found && /^# / { found = 1; skip_blank = 1; next }
-            found && skip_blank && /^$/ { skip_blank = 0; next }
-            found { skip_blank = 0; print }
-          ' "./CONTRIBUTORS.md")
-
-          mapfile -d '' -t files < <(find docs -type f -name CONTRIBUTORS.md -print0)
-          for file in "${files[@]}"; do
-            # extract the frontmatter and other leading notes from the document before appending updated contributions.
-            header=$(awk '
-              BEGIN { found_heading = 0; in_body = 0 }
-              /^## / { found_heading = 1; print; next }
-              found_heading && !in_body {
-                # Blank line right after heading: print it and start looking at body
-                if (/^$/) { print; in_body = 1; next }
-                # Non-blank line right after heading: still part of heading block
-                print; next
-              }
-              in_body {
-                # First blank line after body paragraph: stop
-                if (/^$/) exit
-                print; next
-              }
-              { print }
-            ' "${file}")
-            {
-              echo "${header}"
-              echo ""
-              echo "${body}"
-            } > "${file}"
-          done
-      - name: Configure bot credentials
-        uses: go-openapi/gh-actions/ci-jobs/bot-credentials@22f6d5e0e1d13b8e835ea0ffe69ed5589f7cc354 # v1.4.11
-        id: bot-credentials
-        # For go-openapi repos (using secrets: inherit):
-        #   Falls back to: CI_BOT_APP_ID, CI_BOT_APP_PRIVATE_KEY, CI_BOT_GPG_PRIVATE_KEY, etc.
-        #
-        # For other orgs: explicitly pass secrets with your custom names
-        with:
-          enable-github-app: "true"
-          github-app-id: ${{ secrets.github-app-id || secrets.CI_BOT_APP_ID }}
-          github-app-private-key: ${{ secrets.github-app-private-key || secrets.CI_BOT_APP_PRIVATE_KEY }}
-          enable-gpg-signing: ${{ inputs.enable-commit-signing }}
-          gpg-private-key: ${{ secrets.gpg-private-key || secrets.CI_BOT_GPG_PRIVATE_KEY }}
-          gpg-passphrase: ${{ secrets.gpg-passphrase || secrets.CI_BOT_GPG_PASSPHRASE }}
-          gpg-fingerprint: ${{ secrets.gpg-fingerprint || secrets.CI_BOT_SIGNING_KEY }}
-          enable-commit-signing: "true"
-          enable-tag-signing: "false"
-      - name: Create a PR
-        id: create-pull-request
-        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
-        with:
-          commit-message: "doc: updated contributors file"
-          branch: doc/contributors-bot
-          delete-branch: true
-          title: "doc: updated contributors file"
-          token: ${{ steps.bot-credentials.outputs.app-token }}
-          labels: "bot"
-          draft: false
-          assignees: fredbi
-          reviewers: fredbi
-          sign-commits: ${{ inputs.enable-commit-signing }}
-          signoff: true # DCO
-
-  no-change:
-    needs: [update-contributors]
-    runs-on: ubuntu-latest
-    if: ${{ needs.update-contributors.outputs.pull-request-operation  == 'none' }}
-    steps:
-      - name: Report no change needed
-        run: |
-          echo "::notice title=no-change::No change needed to the contributors file"
-          exit 0
-
-  auto-merge:
-    # description: |
-    #   Approves the PR, waits for all jobs (including non-required ones), and enables auto-merge.
-    #
-    #   This workflow completes the full auto-merge flow for bot-created PRs:
-    #   1. Approve the PR (bot can't approve its own PR)
-    #   2. Wait for all workflow runs to complete (prevents branch deletion during non-required jobs)
-    #   3. Enable auto-merge if not already enabled (avoids race condition with auto-merge.yml)
-    needs: [update-contributors]
-    permissions:
-      contents: write
-      pull-requests: write
-    runs-on: ubuntu-latest
-    if: ${{ needs.update-contributors.outputs.pull-request-operation  != 'none' }}
-    env:
-      PR_URL: ${{ needs.update-contributors.outputs.pull-request-url }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Auto-approve PR
-        run: gh pr review --approve "$PR_URL"
-      - name: Wait for all workflow runs to complete
-        uses: go-openapi/gh-actions/ci-jobs/wait-pending-jobs@22f6d5e0e1d13b8e835ea0ffe69ed5589f7cc354 # v1.4.11
-        with:
-          pr-url: ${{ env.PR_URL }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Enable auto-merge
-        run: |
-          # Attempt to enable auto-merge, handling race condition gracefully
-          set +e  # Don't exit on error
-          OUTPUT=$(gh pr merge --auto --rebase "$PR_URL" 2>&1)
-          EXIT_CODE=$?
-          set -e  # Re-enable exit on error
-
-          if [ $EXIT_CODE -eq 0 ]; then
-            echo "::notice title=auto-merge::Auto-merge enabled successfully"
-            exit 0
-          fi
-
-          # Check if error is due to race condition (merge already in progress)
-          # GitHub GraphQL API returns: "GraphQL: Merge already in progress (mergePullRequest)"
-          if echo "$OUTPUT" | grep -q "Merge already in progress"; then
-            echo "::warning title=auto-merge::Auto-merge already handled by another workflow (race condition)"
-            exit 0
-          fi
-          if echo "$OUTPUT" | grep -q "Pull request is already merged"; then
-            echo "::warning title=auto-merge::Auto-merge already handled by another workflow (race condition)"
-            exit 0
-          fi
-
-          # Unexpected error - fail the workflow
-          echo "::error title=auto-merge::Failed to enable auto-merge"
-          echo "$OUTPUT"
-          exit $EXIT_CODE
+    -
+      name: Checkout repository
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+    -
+      name: Identify all-time contributors to this repository
+      uses: github/contributors@8b7586939baa0af4e801dbd22c88adf6e0db8915 # v1.7.5
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        REPOSITORY:  ${{ github.repository }}
+        LINK_TO_PROFILE: 'True'
+    -
+      name: Rename contributor file
+      run: |
+        rm -rf contributors.json
+        mv contributors.md CONTRIBUTORS.md
+    -
+      name: Create a PR
+      id: create-pull-request
+      uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
+      with:
+        commit-message: "doc: updated contributors file"
+        branch: doc/contributors-bot
+        delete-branch: true
+        title: "doc: updated contributors file"
+        token: ${{ secrets.GITHUB_TOKEN }}
+        labels: "bot"
+        assignees: fredbi
+        reviewers: fredbi
+        sign-commits: true

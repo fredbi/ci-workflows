@@ -1,0 +1,94 @@
+name: doc update PR comment
+# description: This workflow mimics how a go-openapi repo would typically invoke the common workflow.
+
+on:
+  workflow-run:
+    workflows:
+      - doc update check
+    types:
+      - completed
+    paths:
+    - '**/*.md'
+
+permissions:
+  contents: read
+  pull_requests: write
+
+jobs:
+  on-success:
+    name: Ensure triggering workflow was successful
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "The triggering workflow was successful"
+
+  on-failure:
+    name: Triggering workflow was unsuccessful
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "The triggering workflow failed. Stopping here"
+          exit 1
+
+        run_id: ${{ github.event.workflow_run.id }}
+        target_repo: ${{ github.event.repository }}
+        pr_sha: ${{ github.event.workflow_run.head_sha }}
+        
+
+  pr-comment-markdown-congrats:
+    name: Create or update congrats comment
+    needs: pr-markdown-congrats
+    uses: go-openapi/ci-workflows/.github/workflows/pr-comment.yml@master #  <- TODO: caller's ref
+    secrets: inherit
+    with:
+      run_id: ${{ needs.pr-markdown-congrats.outputs.run_id }}
+      target_repo: ${{ needs.pr-markdown-congrats.outputs.target_repo }}
+      pr_number: ${{ needs.pr-markdown-congrats.outputs.pr_number }}
+      pr_sha: ${{ needs.pr-markdown-congrats.outputs.pr_sha }}
+      artifact_name: ${{ needs.pr-markdown-congrats.outputs.artifact_name }}
+      comment_title: ${{ needs.pr-markdown-congrats.outputs.comment_title }}
+      reactions:  ${{ needs.pr-markdown-congrats.outputs.reactions }}
+
+  pr-comment-markdown-report:
+    name: Create or update comment with report
+    needs: [on-success]
+    uses: go-openapi/ci-workflows/.github/workflows/pr-comment.yml
+    secrets: inherit
+    with:
+      run_id: ${{ inputs.pr-markdown-report.outputs.run_id }}
+      target_repo: ${{ inputs.pr-markdown-report.outputs.target_repo }}
+      pr_number: ${{ inputs.pr-markdown-report.outputs.pr_number }}
+      pr_sha: ${{ inputs.pr-markdown-report.outputs.pr_sha }}
+      artifact_name: ${{ inputs.pr-markdown-report.outputs.artifact_name }}
+      comment_title: ${{ inputs.pr-markdown-report.outputs.comment_title }}
+      reactions:  ${{ inputs.pr-markdown-report.outputs.reactions }}
+
+  pr-comment-spelling-congrats:
+    name: Create or update comment
+    needs: pr-markdown-spelling-congrats
+    uses: go-openapi/ci-workflows/.github/workflows/pr-comment.yml@master
+    secrets: inherit
+    with:
+      run_id: ${{ needs.pr-markdown-spelling-congrats.outputs.run_id }}
+      target_repo: ${{ needs.pr-markdown-spelling-congrats.outputs.target_repo }}
+      pr_number: ${{ needs.pr-markdown-spelling-congrats.outputs.pr_number }}
+      pr_sha: ${{ needs.pr-markdown-spelling-congrats.outputs.pr_sha }}
+      artifact_name: ${{ needs.pr-markdown-spelling-congrats.outputs.artifact_name }}
+      comment_title: ${{ needs.pr-markdown-spelling-congrats.outputs.comment_title }}
+      reactions:  ${{ needs.pr-markdown-spelling-congrats.outputs.reactions }}
+
+  pr-comment-spelling-report:
+    name: Create or update comment
+    needs: [on-success]
+    secrets: inherit
+    uses: ./.github/workflows/pr-comment.yml
+    with:
+      run_id: ${{ inputs.pr-markdown-spelling-report.outputs.run_id }}
+      target_repo: ${{ inputs.pr-markdown-spelling-report.outputs.target_repo }}
+      pr_number: ${{ inputs.pr-markdown-spelling-report.outputs.pr_number }}
+      pr_sha: ${{ inputs.pr-markdown-spelling-report.outputs.pr_sha }}
+      artifact_name: ${{ inputs.pr-markdown-spelling-report.outputs.artifact_name }}
+      comment_title: ${{ inputs.pr-markdown-spelling-report.outputs.comment_title }}
+      reactions:  ${{ inputs.pr-markdown-spelling-report.outputs.reactions }}

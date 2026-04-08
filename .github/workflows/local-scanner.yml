@@ -1,4 +1,4 @@
-name: Vulnerability scans [Test only]
+name: Vulnerability scans
 
 on:
   branch_protection_rule:
@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  scanners:
+  vulnerability-scanners:
     permissions:
       contents: read
       security-events: write

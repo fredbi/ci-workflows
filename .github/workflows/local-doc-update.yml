@@ -1,18 +1,15 @@
-name: go test
+name: doc update check
 # description: This workflow mimics how a go-openapi repo would typically invoke the common workflow.
 
 on:
-  push:
-    branches:
-      - master
-
   pull_request:
+    paths:
+    - '**/*.md'
 
 permissions:
-  pull-requests: read
   contents: read
 
 jobs:
   test:
-    uses: ./.github/workflows/go-test.yml
+    uses: ./.github/workflows/doc-update.yml
     secrets: inherit

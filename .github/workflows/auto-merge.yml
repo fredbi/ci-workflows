@@ -2,31 +2,9 @@ name: Dependabot auto-merge
 
 on:
   workflow_call:
-    inputs:
-      enable-organization-bot:
-        description: |
-          Enable automatic approval and merge of PRs initiated by a bot.
-
-        type: string
-        required: false
-        default: "true"
-      organization-bot:
-        description: |
-          The bot name for your organization,
-          for which you wish to enable auto-merge.
-
-          Example: bot-go-openapi[bot]
-
-        type: string
-        required: false
-        default: "bot-go-openapi[bot]"
 
 permissions:
   contents: read
-
-defaults:
-  run:
-    shell: bash
 
 jobs:
   dependabot:
@@ -34,145 +12,65 @@ jobs:
       contents: write
       pull-requests: write
     runs-on: ubuntu-latest
-    if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.html_url != '' }}
-    env:
-      PR_URL: ${{ github.event.pull_request.html_url }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' }}
     steps:
       -
         name: Dependabot metadata
         id: metadata
-        uses: dependabot/fetch-metadata@ffa630c65fa7e0ecfa0625b5ceda64399aea1b36 # v3.0.0
-      -
-        name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-      -
-        name: Check go directive unchanged
-        id: go-directive
-        run: |
-          changed=false
-          for gomod in $(find . -name go.mod -not -path '*/vendor/*'); do
-            head_go=$(grep '^go ' "$gomod" | awk '{print $2}')
-            base_go=$(git show "origin/${{ github.event.pull_request.base.ref }}:$gomod" 2>/dev/null | grep '^go ' | awk '{print $2}' || echo "")
-            if [ -n "$base_go" ] && [ "$head_go" != "$base_go" ]; then
-              echo "::warning title=go-directive::${gomod}: go directive changed from ${base_go} to ${head_go} — skipping auto-merge"
-              changed=true
-            fi
-          done
-          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+        uses: dependabot/fetch-metadata@08eff52bf64351f401fb50d4972fa95b9f2c2d1b # v2.4.0
       -
         name: Auto-approve all dependabot PRs
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
         run: gh pr review --approve "$PR_URL"
       -
         name: Auto-merge dependabot PRs for development dependencies
-        if: ${{ contains(steps.metadata.outputs.dependency-group, 'development-dependencies') && steps.go-directive.outputs.changed != 'true' }}
-        run: |
-          set +e  # Don't exit on error
-          OUTPUT=$(gh pr merge --auto --rebase "$PR_URL" 2>&1)
-          EXIT_CODE=$?
-          set -e  # Re-enable exit on error
-          # Check if error is due to race condition (merge already in progress)
-          # GitHub GraphQL API returns: "GraphQL: Merge already in progress (mergePullRequest)"
-          if echo "$OUTPUT" | grep -q "Merge already in progress"; then
-            echo "::warning title=auto-merge::Auto-merge already handled by another workflow (race condition)"
-            exit 0
-          fi
-          if echo "$OUTPUT" | grep -q "Pull request is already merged"; then
-            echo "::warning title=auto-merge::Auto-merge already handled by another workflow (race condition)"
-            exit 0
-          fi
-          # Unexpected error - fail the workflow
-          echo "::error title=auto-merge::Failed to enable auto-merge"
-          echo "$OUTPUT"
-          exit $EXIT_CODE
+        if: ${{ contains(steps.metadata.outputs.dependency-group, 'development-dependencies') }}
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        run: gh pr merge --auto --rebase "$PR_URL"
       -
         name: Auto-merge dependabot PRs for go-openapi patches
-        if: ${{ contains(steps.metadata.outputs.dependency-group, 'go-openapi-dependencies') && (steps.metadata.outputs.update-type == 'version-update:semver-minor' || steps.metadata.outputs.update-type == 'version-update:semver-patch') && steps.go-directive.outputs.changed != 'true' }}
-        run: |
-          set +e  # Don't exit on error
-          gh pr merge --auto --rebase "$PR_URL"
-          # Check if error is due to race condition (merge already in progress)
-          # GitHub GraphQL API returns: "GraphQL: Merge already in progress (mergePullRequest)"
-          if echo "$OUTPUT" | grep -q "Merge already in progress"; then
-            echo "::warning title=auto-merge::Auto-merge already handled by another workflow (race condition)"
-            exit 0
-          fi
-          if echo "$OUTPUT" | grep -q "Pull request is already merged"; then
-            echo "::warning title=auto-merge::Auto-merge already handled by another workflow (race condition)"
-            exit 0
-          fi
-          # Unexpected error - fail the workflow
-          echo "::error title=auto-merge::Failed to enable auto-merge"
-          echo "$OUTPUT"
-          exit $EXIT_CODE
+        if: >-
+          ${{
+            contains(steps.metadata.outputs.dependency-group, 'go-openapi-dependencies') &&
+            (
+              steps.metadata.outputs.update-type == 'version-update:semver-minor' ||
+              steps.metadata.outputs.update-type == 'version-update:semver-patch'
+            )
+          }}
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        run: gh pr merge --auto --rebase "$PR_URL"
       -
         name: Auto-merge dependabot PRs for golang.org updates
-        if: ${{ contains(steps.metadata.outputs.dependency-group, 'golang-org-dependencies') && steps.go-directive.outputs.changed != 'true' }}
-        run: |
-          set +e  # Don't exit on error
-          OUTPUT=$(gh pr merge --auto --rebase "$PR_URL" 2>&1)
-          EXIT_CODE=$?
-          set -e  # Re-enable exit on error
-          # Check if error is due to race condition (merge already in progress)
-          # GitHub GraphQL API returns: "GraphQL: Merge already in progress (mergePullRequest)"
-          if echo "$OUTPUT" | grep -q "Merge already in progress"; then
-            echo "::warning title=auto-merge::Auto-merge already handled by another workflow (race condition)"
-            exit 0
-          fi
-          if echo "$OUTPUT" | grep -q "Pull request is already merged"; then
-            echo "::warning title=auto-merge::Auto-merge already handled by another workflow (race condition)"
-            exit 0
-          fi
-          # Unexpected error - fail the workflow
-          echo "::error title=auto-merge::Failed to enable auto-merge"
-          echo "$OUTPUT"
-          exit $EXIT_CODE
+        if: ${{ contains(steps.metadata.outputs.dependency-group, 'golang-org-dependencies') }}
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        run: gh pr merge --auto --rebase "$PR_URL"
 
-  actions-bot:
-    # description: |
-    #   Auto merge for go-openapi bot.
-    #   The regular actions-bot user cannot approve and merge its own pull requests,
-    #   We use another bot user to update content to be approved/auto-merged by actions-bot.
-    permissions:
-      contents: write
-      pull-requests: write
-    runs-on: ubuntu-latest
-    if: ${{ inputs.enable-organization-bot == 'true' && github.event.pull_request.user.login == inputs.organization-bot && github.event.pull_request.html_url != '' }}
-    env:
-      PR_URL: ${{ github.event.pull_request.html_url }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      -
-        name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      -
-        name: Auto-approve all bot-go-openapi PRs
-        run: gh pr review --approve "$PR_URL"
-      -
-        name: Wait for all workflow runs to complete
-        uses: go-openapi/gh-actions/ci-jobs/wait-pending-jobs@22f6d5e0e1d13b8e835ea0ffe69ed5589f7cc354 # v1.4.11
-        with:
-          pr-url: ${{ env.PR_URL }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      -
-        name: Auto-merge bot-go-openapi PRs
-        run: |
-          set +e  # Don't exit on error
-          OUTPUT=$(gh pr merge --auto --rebase "$PR_URL" 2>&1)
-          EXIT_CODE=$?
-          # Check if error is due to race condition (merge already in progress)
-          # GitHub GraphQL API returns: "GraphQL: Merge already in progress (mergePullRequest)"
-          if echo "$OUTPUT" | grep -q "Merge already in progress"; then
-            echo "::warning title=auto-merge::Auto-merge already handled by another workflow (race condition)"
-            exit 0
-          fi
-          if echo "$OUTPUT" | grep -q "Pull request is already merged"; then
-            echo "::warning title=auto-merge::Auto-merge already handled by another workflow (race condition)"
-            exit 0
-          fi
-          # Unexpected error - fail the workflow
-          echo "::error title=auto-merge::Failed to enable auto-merge"
-          echo "$OUTPUT"
-          exit $EXIT_CODE
+  # Auto merge is current disabled: we need automatic PRs to swap identity (e.g. using a Github App),
+  # so the pull_request event is properly captured and the PR can validate.
+  #actions-bot:
+  #  permissions:
+  #    contents: write
+  #    pull-requests: write
+  #  runs-on: ubuntu-latest
+  #  if: ${{ github.event.pull_request.user.login == 'github-actions[bot]' }}
+  #  steps:
+  #    -
+  #      name: Auto-approve all github-actions bot PRs
+  #      env:
+  #        PR_URL: ${{github.event.pull_request.html_url}}
+  #        GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+  #      run: gh pr review --approve "$PR_URL"
+  #    -
+  #      name: Auto-merge github-actions bot PRs
+  #      env:
+  #        PR_URL: ${{github.event.pull_request.html_url}}
+  #        GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+  #      run: gh pr merge --auto --rebase "$PR_URL"

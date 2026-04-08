@@ -1,4 +1,4 @@
-name: Release [Test only]
+name: Release
 
 on:
   push:
@@ -13,6 +13,4 @@ jobs:
     permissions:
       contents: write
     uses: ./.github/workflows/release.yml
-    with:
-      tag: ${{ github.ref_name }}
     secrets: inherit

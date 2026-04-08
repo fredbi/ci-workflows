@@ -1,13 +1,11 @@
-name: Dependabot auto-merge [Test only]
-
-permissions:
-  contents: read
-
-# description: |
-# This workflow mimics how a go-openapi repo would typically invoke the common workflow.
+name: Dependabot auto-merge
+# description: This workflow mimics how a go-openapi repo would typically invoke the common workflow.
 
 on:
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   dependabot:
