@@ -4,7 +4,6 @@
 [![Tests][test-badge]][test-url] [![Coverage][cov-badge]][cov-url] [![CI vuln scan][vuln-scan-badge]][vuln-scan-url] [![CodeQL][codeql-badge]][codeql-url]
 <!-- Badges: release & docker images  -->
 <!-- Badges: code quality  -->
-<!-- Badges: license & compliance -->
 [![Release][release-badge]][release-url] [![Go Report Card][gocard-badge]][gocard-url] [![CodeFactor Grade][codefactor-badge]][codefactor-url] [![License][license-badge]][license-url]
 <!-- Badges: documentation & support -->
 <!-- Badges: others & stats -->
@@ -12,11 +11,10 @@
 
 ---
 
-Common Continuous Integration (`CI`) workflows and setup for go-openapi repos.
+Shared, reusable GitHub Actions workflows that standardize CI/CD across the [go-openapi](https://github.com/go-openapi) family of repositories.
 
-* shared github action workflows
-* shared `dependabot` configuration (**BLOCKED**)
-* shared `golangci-lint` configuration (**BLOCKED**)
+**One workflow call** replaces hundreds of lines of per-repo CI configuration, with built-in linting, testing,
+fuzz testing, security scanning, release automation, and more.
 
 ## Announcements
 
@@ -28,22 +26,22 @@ You may join the discord community by clicking the invite link on the discord ba
 
 Or join our Slack channel: [![Slack Channel][slack-logo]![slack-badge]][slack-url]
 
-## Status
+## What you get
 
-Development is active. We are regularly adding more shared workflows to standardize CI across go-openapi repos.
+| Area | Workflows | Highlights |
+|------|-----------|------------|
+| **Testing** | `go-test.yml`, `go-test-monorepo.yml` | Lint, unit tests, fuzz tests, coverage & test reports |
+| **Security** | `codeql.yml`, `scanner.yml` | CodeQL analysis, Trivy, govulncheck |
+| **Releases** | `bump-release.yml`, `tag-release.yml`, `release.yml` | GPG-signed tags, git-cliff release notes |
+| **Monorepo releases** | `bump-release-monorepo.yml`, `prepare-release-monorepo.yml` | Multi-module version bumps, go.mod updates |
+| **Dependencies** | `auto-merge.yml` | Auto-approve & merge dependabot and bot PRs |
+| **Documentation** | `contributors.yml`, `markdown-changed.yml` | CONTRIBUTORS.md updates, markdown lint & spellcheck |
 
-> NOTE: at this moment, it is difficult to share the configurations for dependabot and golangci-lint,
-> so these are not shared yet.
+See the full [workflow reference](.github/workflows/README.md) for details on each workflow.
 
-## Example
+## Quick start
 
-`go-test.yml`
-
-![go-test workflow](./docs/images/go-test.png)
-
-## Basic usage
-
-You reuse a workflow like so:
+Call a shared workflow from your repository:
 
 ```yaml
 name: go test
@@ -54,9 +52,7 @@ permissions:
 
 on:
   push:
-    branches:
-      - master
-
+    branches: [ master ]
   pull_request:
 
 jobs:
@@ -65,7 +61,7 @@ jobs:
     secrets: inherit
 ```
 
-It is recommended to pin the git ref `master` with a commit sha, and let dependabot keep you up to date. Like so:
+**Recommended:** pin to a commit SHA and let dependabot keep you up to date:
 
 ```yaml
     uses: go-openapi/ci-workflows/.github/workflows/go-test.yml@b28a8b978a5ee5b7f4241ffafd6cc6163edb5dfd # v0.1.0
@@ -73,9 +69,8 @@ It is recommended to pin the git ref `master` with a commit sha, and let dependa
 
 ### Permissions
 
-Make sure your job permissions match the requirements of the called shared workflow.
+Grant job-level permissions that match the requirements of the called workflow:
 
-Example:
 ```yaml
 name: "CodeQL"
 
@@ -94,52 +89,18 @@ permissions:
 
 jobs:
   codeql:
-    permissions:  # <- grant permissions at the job level that match the requirements of the called workflow
+    permissions:
       contents: read
       security-events: write
     uses: ./.github/workflows/codeql.yml
     secrets: inherit
 ```
 
-## Available workflows `[v0.1.0]`
+## Example: `go-test.yml` pipeline
 
-### Dependencies automation
+![go-test workflow](./docs/images/go-test.png)
 
-* auto-merge.yml:
-  * auto-merge dependabot updates,  with dependency group rules
-  * auto-merge go-openapi bot updates
-
-### Test automation
-
-* go-test.yml: go unit tests
-  * includes:
-    * fuzz-test.yml: orchestrates fuzz testing with a cached corpus
-    * collect-coverage.yml: (common) collect & publish test coverage (to codecov)
-    * collect-reports.yml: (common) collect & publish test reports (to codecov and github)
-
-* go-test-monorepo.yml: go unit tests, with support for go mono-repos (same features)
-
->NOTE: for mono-repos, the workflow works best with go1.25 and go.work declaring all your modules and committed to git.
-
-### Security 
-
-* codeql.yml: CodeQL workflow for go and github actions
-* scanner.yml: trivy & govulncheck scans
-
-### Release automation
-
-* bump-release.yml: manually triggered workflow to cut a release
-* tag-release.yml: cut a release on push tag
-* release.yml: (common) release & release notes build
-
->NOTE: mono-repos are not supported yet.
-
-Release notes are produced using `git-cliff`. The configuration may be set using a `.cliff.toml` file.
-The default configuration is the `.cliff.toml` in this repo (uses remote config).
-
-### Documentation quality
-
-* contributors.yml: updates CONTRIBUTORS.md
+A single workflow call orchestrates linting, unit tests across Go versions, fuzz testing with corpus caching, and automatic coverage and test report collection.
 
 ## Motivation
 
@@ -157,12 +118,9 @@ See <https://github.com/go-openapi/ci-workflows/releases>
 
 This content ships under the [SPDX-License-Identifier: Apache-2.0](./LICENSE).
 
-<!--
-## Limitations
--->
-
 ## Other documentation
 
+* [Workflow reference](.github/workflows/README.md)
 * [All-time contributors](./CONTRIBUTORS.md)
 * [Contributing guidelines](.github/CONTRIBUTING.md)
 * [Maintainers documentation](docs/MAINTAINERS.md)
@@ -206,7 +164,7 @@ Maintainers can cut a new release by either:
 [slack-badge]: https://img.shields.io/badge/slack-blue?link=https%3A%2F%2Fgoswagger.slack.com%2Farchives%2FC04R30YM
 [slack-url]: https://goswagger.slack.com/archives/C04R30YMU
 [discord-badge]: https://img.shields.io/discord/1446918742398341256?logo=discord&label=discord&color=blue
-[discord-url]: https://discord.gg/FfnFYaC3k5
+[discord-url]: https://discord.gg/twZ9BwT3
 <!-- Badges: license & compliance -->
 [license-badge]: http://img.shields.io/badge/license-Apache%20v2-orange.svg
 [license-url]: https://github.com/go-openapi/ci-workflows/?tab=Apache-2.0-1-ov-file#readme

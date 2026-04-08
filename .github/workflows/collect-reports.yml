@@ -24,7 +24,7 @@ jobs:
     steps:
       -
         name: Download test report artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
           run-id: "${{ github.run_id }}"
           pattern: "*.report.*"
@@ -32,7 +32,7 @@ jobs:
           path: reports/
       -
         name: Install go-junit-report
-        uses: go-openapi/gh-actions/install/go-junit-report@22f6d5e0e1d13b8e835ea0ffe69ed5589f7cc354 # v1.4.11
+        uses: go-openapi/gh-actions/install/go-junit-report@ec7fc0008806cbf69bffc34da17d9f2ddb2cd9f5 # v1.4.8
       -
         name: Convert test reports to a merged JUnit XML
         # NOTE: codecov test reports only support JUnit format at this moment. See https://docs.codecov.com/docs/test-analytics.
@@ -48,7 +48,7 @@ jobs:
       -
         name: Upload test results to Codecov
         # This allows for using the test results UI on codecov
-        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           files: '**/junit_report.xml'
           report_type: 'test_results'
@@ -57,7 +57,7 @@ jobs:
           verbose: true
       -
         name: Install go-ctrf-json-reporter
-        uses: go-openapi/gh-actions/install/go-ctrf-json-reporter@22f6d5e0e1d13b8e835ea0ffe69ed5589f7cc354 # v1.4.11
+        uses: go-openapi/gh-actions/install/go-ctrf-json-reporter@ec7fc0008806cbf69bffc34da17d9f2ddb2cd9f5 # v1.4.8
       -
         name: Convert test reports to CTRF JSON
         # description: |
@@ -106,7 +106,7 @@ jobs:
       # They also handle the storage of past test reports, so as to assess flaky tests.
       -
         name: Publish Test Summary Results
-        uses: ctrf-io/github-test-reporter@0f299074936c32ccaab5be5230511f6b2b9080aa # v1.0.28
+        uses: ctrf-io/github-test-reporter@024bc4b64d997ca9da86833c6b9548c55c620e40 # v1.0.26
         with:
           report-path: 'reports/ctrf_report_*.json'
           use-suite-name: true
