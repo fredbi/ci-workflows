@@ -55,7 +55,7 @@ jobs:
           ref: ${{ inputs.tag }}
           fetch-tags: true
       -
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: stable
           check-latest: true
@@ -89,10 +89,10 @@ jobs:
         name: Detect go mono-repo
         if: ${{ inputs.is-monorepo == 'true' }}
         id: detect-monorepo
-        uses: go-openapi/gh-actions/ci-jobs/detect-go-monorepo@22f6d5e0e1d13b8e835ea0ffe69ed5589f7cc354 # v1.4.11
+        uses: go-openapi/gh-actions/ci-jobs/detect-go-monorepo@ec7fc0008806cbf69bffc34da17d9f2ddb2cd9f5 # v1.4.8
       -
         name: Install git-cliff
-        uses: taiki-e/install-action@cf39a74df4a72510be4e5b63348d61067f11e64a # v2.75.0
+        uses: taiki-e/install-action@385db9cc6bf65d19775b02084a4b698eaca9a4f2 # v2.68.19
         with:
           tool: git-cliff
       -
@@ -338,7 +338,7 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
       -
         name: Create github release
-        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2.6.1
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
           body: ${{ inputs.is-monorepo == 'true' && steps.notes-monorepo.outputs.content || steps.notes.outputs.content }}
           tag_name: ${{ inputs.tag }}
