@@ -1,0 +1,11 @@
+Project 'example.Api' has the following package references:
+  [net8.0]:
+  Top-level Package           Requested   Resolved
+  > My.Package                1.2.3       1.2.1
+  > My.Other.Package          4.2.3       4.2.3
+
+Project 'other.example.Api' has the following package references:
+  [net8.0]:
+  Top-level Package           Requested   Resolved
+  > My.Other.Package          1.2.3       1.2.1
+  > My.Nunit.Package          1.2.3       1.2.1

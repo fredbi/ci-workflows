@@ -1,0 +1,24 @@
+[
+  {
+    "project": "example.Api",
+    "packages": [
+      {
+        "id": "My.Package"
+      },
+      {
+        "id": "My.Other.Package"
+      }
+    ]
+  },
+  {
+    "project": "other.example.Api",
+    "packages": [
+      {
+        "id": "My.Other.Package"
+      },
+      {
+        "id": "My.Nunit.Package"
+      }
+    ]
+  }
+]
